@@ -1,0 +1,32 @@
+# --- Dados financeiros de clientes: NUNCA versionar ---
+# CSVs do ClickUp, planilhas geradas e comprovantes contêm dados sensíveis.
+*.csv
+*.xlsx
+*.xls
+*.pdf
+*.jpg
+*.jpeg
+*.png
+*.heic
+
+# --- Pastas de trabalho mensais (relatórios e recibos) ---
+# Ajuste conforme sua organização; o objetivo é não subir trabalho real.
+# Ex.: 2026-05/, 2026-06/ ...
+20*/
+Recibos e comprovantes/
+
+# --- Cache do Python ---
+__pycache__/
+*.pyc
+*.pyo
+
+# --- Arquivos de sistema ---
+.DS_Store
+Thumbs.db
+scripts/__pycache__/
+
+# --- Registro de clientes e casos de teste: nomes reais, nunca versionar ---
+# O clientes_config.json guarda nome de cliente no ClickUp, nome de entrega e a
+# pasta oficial de cada um no Drive. O evals.json guarda prompts com dados reais.
+scripts/clientes_config.json
+evals/evals.json
