@@ -22,29 +22,19 @@ aparece dias depois como resposta de comentário, e o recibo oficial depois diss
 Montar a entrega à mão era isto: abrir a planilha do mês anterior como modelo, exportar o CSV do
 ClickUp e ir colando de um para o outro, cliente por cliente. Depois baixar cada recibo e cada
 comprovante, um a um, e renomear um a um, na ordem da planilha. Dois a três dias de trabalho,
-todo mês, por quase três anos.
+todo mês, por mais de três anos.
 
 ## Um comando, o mês inteiro
 
-Seis a oito clientes por rodada, algumas dezenas de despesas, do dado bruto no ClickUp até a
-pasta pronta para enviar:
-
-- **Coleta.** Lê a lista do mês na API, arquivadas e não arquivadas, e baixa os anexos das três
-  portas em que eles se escondem, deduplicando por id.
-- **Planilha.** Uma linha por despesa, em ordem cronológica, no layout exato daquele cliente:
-  fonte, larguras, logo, total em fórmula com o valor em cache.
-- **Conferência.** Compara o arquivo pronto com a especificação escrita, vinte e poucas
-  asserções, e devolve cada violação como pendência.
-- **Comprovantes.** Numera no padrão `XX.YY` o que é inequívoco e separa o resto em `_revisar/`,
-  com o motivo.
-- **Varredura.** Nos clientes de cobrança acumulativa, procura no ano inteiro despesa paga que
-  nunca foi cobrada.
-- **Publicação.** Copia a entrega para a pasta oficial do cliente no Drive.
+Um comando cobre o mês inteiro: lê o ClickUp, monta a planilha de cada cliente no layout do
+escritório, confere o arquivo produzido, numera os comprovantes e deixa cada pasta pronta para
+enviar. Dez clientes, 40 despesas, 110 arquivos, sem ninguém abrir tarefa.
 
 O ganho é tempo, e é o grosso daqueles dois a três dias. Ele nunca esteve na planilha: estava em
-abrir 25 tarefas, baixar 70 arquivos e descobrir, um por um, qual pertence a qual despesa. A
-prestação de contas sempre saiu correta, e saiu correta porque alguém conferia 70 arquivos todo
-mês para que ela saísse. O que a automação eliminou foi essa conferência, não o cuidado dela.
+abrir as 40 tarefas, baixar os 110 arquivos e descobrir, um por um, qual pertence a qual despesa.
+A prestação de contas sempre saiu correta, e saiu correta porque alguém conferia esses 110
+arquivos todo mês para que ela saísse. O que a automação eliminou foi essa conferência, não o
+cuidado dela.
 
 Automatizar, por outro lado, cria um risco que o trabalho manual não tinha: errar rápido e em
 silêncio. Daí o pipeline levar junto um conferidor que valida cada arquivo produzido contra a
@@ -54,7 +44,7 @@ mesmo tempo: a despesa paga e arquivada na lista do mês errado, que a varredura
 valendo R$ 15,94 e dois meses de atraso.
 
 A escala vem de graça: cliente novo é uma entrada em arquivo de configuração, não uma variante
-do script, então atender o sétimo custa o mesmo que atender o sexto.
+do script, então o próximo custa o mesmo que o anterior.
 
 ## Como a skill roda
 
