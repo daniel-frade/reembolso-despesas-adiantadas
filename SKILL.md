@@ -1,7 +1,7 @@
 ---
 name: reembolso-despesas-adiantadas
 description: >
-  Gera as planilhas mensais de adiantamentos/reembolsos de despesas dos clientes da NLR a
+  Gera as planilhas mensais de adiantamentos/reembolsos de despesas dos clientes a
   partir do ClickUp e organiza os comprovantes por demanda. Use sempre que o Daniel disser
   "roda os adiantamentos de <mês>", "relatório de adiantamentos", "planilha de adiantamentos
   do <cliente>", "reembolsos do mês", "adiantamento de despesas", ou nomear um cliente do
@@ -17,7 +17,7 @@ description: >
   comprovantes têm regras próprias que erram silenciosamente se improvisadas.
 ---
 
-# Relatório Mensal de Adiantamentos, NLR
+# Relatório Mensal de Adiantamentos
 
 Custas de clientes pagas pelo caixa do escritório, reembolsadas mensalmente. Para cada cliente,
 a entrega é um `.xlsx` formatado com uma linha por demanda, mais uma pasta de comprovantes
@@ -79,13 +79,13 @@ A lista do ClickUp **se move enquanto você trabalha**. Em julho/2026 a primeira
 tarefas e 8 clientes; depois que o Daniel reorganizou, virou 26 e 6, com dois clientes saindo e
 um entrando. Levantamento do começo da conversa não vale na hora de gerar.
 
-- Buscar `archived=false` **e** `archived=true` e juntar: a NLR arquiva a tarefa assim que vira
+- Buscar `archived=false` **e** `archived=true` e juntar: o escritório arquiva a tarefa assim que vira
   "reembolsado pelo cliente", e a API esconde arquivadas mesmo com `include_closed=true`.
 - Confrontar os clientes encontrados com `clientes_config.json`. Cliente da lista que não está
   no config para o processo **só para ele**; os demais seguem normalmente.
 - Cliente do config que não apareceu no mês é normal: em julho/2026, num cliente de entrega
   conjunta, um dos dois nomes do ClickUp teve zero tarefas.
-- Despesa do próprio escritório (cliente "NLR") não gera relatório: não há quem reembolse.
+- Despesa do próprio escritório (ele aparece como cliente no dropdown) não gera relatório: não há quem reembolse.
 - **Status: não filtre por `approved`.** A tarefa caminha de `to do` → `approved` →
   `solicitado reembolso` → `pago pelo cliente` / `reembolsado pelo cliente`, então `approved` é
   estado transitório e some conforme o mês envelhece: junho/2026 não tinha uma única tarefa em
@@ -96,11 +96,17 @@ um entrando. Levantamento do começo da conversa não vale na hora de gerar.
 ### 1. Rodar
 
 O `CLICKUP_TOKEN` não está no ambiente e nunca vai estar: cada chamada de shell nasce limpa. Ele
-mora no `.env` do projeto do CRM, fora do versionado, e precisa ser carregado a cada comando:
+mora no `.env` do projeto do CRM, fora do versionado, junto do `CLICKUP_FOLDER_ID` (a pasta do
+ano) e do `CLICKUP_SPACE_ID` (o espaço dos adiantamentos), que saíram do código em 12/09/2026
+para a skill poder ser pública. Quem sabe onde esse `.env` está é o `scripts/ambiente.sh`, que
+também não é versionado, porque o caminho identifica o workspace de quem opera. Os três se
+carregam de uma vez, a cada comando, da raiz da skill:
 
 ```bash
-set -a && . ~/Desktop/marvin-01/workspace/nlr/clickup/nlr-clickup-crm/.env && set +a
+set -a && . scripts/ambiente.sh && set +a
 ```
+
+Se o `ambiente.sh` não existir, copie o `ambiente.sh.exemplo` ao lado dele e ajuste o caminho.
 
 Se a API responder `401 OAUTH_025` ("Token invalid"), o token foi revogado e nenhum ajuste de
 script resolve: só Daniel gera outro em Settings > Apps > API Token e reescreve esse `.env`.
@@ -108,11 +114,11 @@ script resolve: só Daniel gera outro em Settings > Apps > API Token e reescreve
 ```bash
 # mês inteiro
 python3 scripts/rodar_adiantamentos.py --mes-clickup "07 Julho 2026" \
-    --mes-nome Julho --ano 2026 --out ".../workspace/nlr/automacoes-financeiras/reembolso-despesas-adiantadas"
+    --mes-nome Julho --ano 2026 --out ".../reembolso-despesas-adiantadas"
 
 # um cliente só (o nome é a chave em clientes_config.json)
 python3 scripts/rodar_adiantamentos.py --mes-clickup "07 Julho 2026" \
-    --mes-nome Julho --ano 2026 --out ".../workspace/nlr/automacoes-financeiras/reembolso-despesas-adiantadas" \
+    --mes-nome Julho --ano 2026 --out ".../reembolso-despesas-adiantadas" \
     --clientes "<cliente>"
 ```
 
@@ -242,7 +248,7 @@ documento válido é o recibo oficial que a plataforma emite depois, geralmente 
 resposta de comentário dias depois.
 
 **Fica na pasta:** boleto, recibo oficial, certidão, nota, e o comprovante de pagamento
-(transferência ou Pix BTG).
+(transferência ou Pix).
 
 > ⚠️ **O caso automático é o mais perigoso, não o `_revisar`.** `organizar_recibos.py` numera
 > sozinho a demanda que tem "1 documento + 1 comprovante", e num teste com julho/2026 ele
@@ -251,13 +257,13 @@ resposta de comentário dias depois.
 > que ele resolve sozinho é o que passa sem ninguém olhar. **Confira também os automáticos.**
 
 > ⚠️ **Não decida pelo nome do arquivo. Abra e olhe.** Em julho/2026, no mesmo cliente,
-> `ONR - larga dos bois.pdf` era comprovante Pix de R$ 39,16 (fica) e `Pagametnto CCIR pix.pdf`
+> `ONR - <nome do caso>.pdf` era comprovante Pix de R$ 39,16 (fica) e `Pagametnto CCIR pix.pdf`
 > era PagTesouro "Aguardando realização do pagamento" (sai). Filtrar por nome teria mandado o
 > brink ao cliente e descartado a prova verdadeira.
 
 A descrição também não vai crua: o `Task Content` costuma terminar com agência, conta e chave
 Pix do favorecido, porque serve a quem paga. `build_relatorio.py` corta esse bloco e reporta o
-corte em `pendencias`. Menção no meio da frase ("(dados: matrícula 2.923)") não é tocada.
+corte em `pendencias`. Menção no meio da frase ("(dados: matrícula 00.000)") não é tocada.
 
 ## Comprovantes: nomenclatura e ordem
 
@@ -281,7 +287,7 @@ Expectativa realista de esforço: em julho/2026, **19 das 22 demandas** caíram 
 porque `organizar_recibos.py` só resolve sozinho o caso de 1 documento + 1 comprovante. Isso não
 é defeito do script, é a natureza do material. Reserve tempo para ler arquivo por arquivo, e
 consulte [references/armadilhas.md](references/armadilhas.md) para as regras de casamento
-(protocolo BTG × pedido ONR, horário da sessão quando dois valores são iguais).
+(protocolo do comprovante bancário × pedido ONR, horário da sessão quando dois valores são iguais).
 
 ## Casos especiais
 
@@ -319,7 +325,7 @@ reembolso-despesas-adiantadas/
   input/
     2026-07/                    ← download bruto do mês; não apagar antes de fechar os clientes
       manifest.json
-      86ajfwjfc/                ← uma pasta por task_id
+      <task_id>/                ← uma pasta por task_id
     <Cliente>/                  ← quando o fetch é por cliente, caso retroativo
   output/
     <Cliente>/                  ← mensal: uma subpasta por mês

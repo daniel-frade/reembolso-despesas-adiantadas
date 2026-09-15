@@ -1,0 +1,41 @@
+Copyright (c) 2026 Daniel Frade. Todos os direitos reservados.
+All rights reserved.
+
+Este repositório é público, mas não é software livre nem código aberto. Ele foi
+publicado com uma única finalidade: servir de estudo de caso e de portfólio do
+autor.
+
+Fica concedida a qualquer pessoa a permissão de ler e examinar este código para
+fins de avaliação do trabalho do autor. Nenhum outro direito é concedido.
+
+Sem autorização prévia e por escrito do autor, é vedado:
+
+  a) usar este código, no todo ou em parte, em qualquer contexto pessoal,
+     comercial, acadêmico ou institucional;
+  b) copiar, reproduzir, distribuir, sublicenciar ou disponibilizar o código
+     fora deste repositório;
+  c) modificar, adaptar ou criar obra derivada;
+  d) usar o código, ou qualquer parte dele, como material de treinamento de
+     modelos de aprendizado de máquina.
+
+A publicação em uma plataforma de hospedagem não amplia essas permissões. O uso
+das funcionalidades próprias da plataforma, como visualizar e bifurcar (fork) o
+repositório dentro dela, decorre dos termos de serviço da plataforma e não
+constitui licença de uso do código.
+
+O código é fornecido "no estado em que se encontra", sem garantia de qualquer
+natureza, expressa ou implícita, incluindo, sem limitação, garantias de
+comercialização, adequação a uma finalidade específica ou não violação de
+direitos. Em nenhuma hipótese o autor responderá por qualquer reclamação, dano
+ou outra responsabilidade decorrente do código ou de seu uso.
+
+---
+
+This repository is public but is not open source. It is published solely as a
+case study and portfolio piece. You may read and examine the code to evaluate
+the author's work. No other rights are granted: use, copying, distribution,
+modification, derivative works, and use as machine learning training data all
+require the author's prior written permission. Provided "as is", without
+warranty of any kind.
+
+Contato para licenciamento: https://github.com/daniel-frade

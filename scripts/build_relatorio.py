@@ -351,7 +351,7 @@ def montar_dados(cliente_cfg, linhas, casos_conhecidos):
         elif 'CASO' in colunas_extra:
             # A chave do mapa é o task_id, não o nome: o mesmo nome de tarefa
             # aparece em casos diferentes ("Certidão de matrícula" sai tanto no
-            # imóvel de Cotia quanto na execução fiscal). Nome só é aceito como
+            # imóvel quanto na execução fiscal). Nome só é aceito como
             # fallback de mapa antigo.
             mapa = casos_conhecidos or {}
             caso = (row.get('_caso_pronto')
@@ -639,9 +639,9 @@ def rotular_periodo(meses, para_arquivo=False):
 def resolver_drive_root(explicito=None):
     """Acha a raiz do mount local do Google Drive Desktop (Shared drives),
     ex.: ~/Library/CloudStorage/GoogleDrive-fulano@empresa.com/Shared drives.
-    Ver estudo em workspace/nlr/clickup/output/estudo-clickup-google-drive.md, é
-    um mount de arquivo normal (DriveFS), escrita/rename/delete comuns
-    funcionam sem nenhuma integração especial com a API do ClickUp/Drive."""
+    Pelo estudo que fizemos do Drive, é um mount de arquivo normal (DriveFS):
+    escrita, rename e delete comuns funcionam sem nenhuma integração especial
+    com a API do ClickUp ou do Drive."""
     if explicito:
         return explicito
     import glob
@@ -711,7 +711,7 @@ def main():
     ap.add_argument('--sem-logo', action='store_true', help='Não injeta logo (uso em teste, sem --ref)')
     ap.add_argument('--publicar-drive', action='store_true',
                      help='Depois de gerar, copia o .xlsx pra pasta oficial do cliente no Google Drive '
-                          '(destino_drive em clientes_config.json), ver workspace/nlr/clickup/output/estudo-clickup-google-drive.md')
+                          '(destino_drive em clientes_config.json)')
     ap.add_argument('--drive-root', help='Raiz do Google Drive (default: autodetectar ~/Library/CloudStorage/GoogleDrive-*/Shared drives)')
     args = ap.parse_args()
 

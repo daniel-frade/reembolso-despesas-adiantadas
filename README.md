@@ -2,8 +2,8 @@
 
 Automação em Python do fechamento mensal de reembolsos de despesas em um escritório de
 advocacia: do dado bruto no ClickUp até o `.xlsx` formatado e os comprovantes numerados,
-publicados na pasta oficial de cada cliente no Google Drive. Um comando por mês, 8 scripts,
-cerca de 2.500 linhas.
+publicados na pasta oficial de cada cliente no Google Drive. O mês inteiro sai de um comando, e
+o trabalho humano que sobra é só o que não é inferível do dado. São 8 scripts e 2.300 linhas.
 
 ## O problema
 
@@ -18,13 +18,13 @@ planilha com uma linha por despesa, no layout que aquele cliente já recebe há 
 pasta de comprovantes numerados na mesma ordem da planilha. À mão, isso era abrir tarefa por
 tarefa, baixar anexo por anexo, montar a planilha e depois casar cada comprovante com cada
 despesa lendo valor, data e favorecido dentro de cada arquivo, com o script de geração
-reescrito por cliente, todo mês. Hoje o mês inteiro sai de um comando, e o trabalho humano
-que sobra é só o que não é inferível do dado.
+reescrito por cliente, todo mês.
 
 ## Como a skill roda
 
-O orquestrador chama os outros sete scripts e nunca trava no meio: cliente com erro não
-impede os demais.
+O orquestrador chama cinco scripts em toda execução, um sexto só nos clientes de cobrança
+acumulativa, e publica no Drive por função importada. O oitavo, o renumerador, é manual de
+propósito. Nada disso trava no meio: cliente com erro não impede os demais.
 
 ```
  rodar_adiantamentos.py --out <raiz da frente> --mes-clickup "09 Setembro 2026"
@@ -32,7 +32,7 @@ impede os demais.
  ├─ deriva 2026-09 do "09" e monta input/ e output/
  │
  ├─(1) clickup_adiantamentos_fetch.py ─────────►  input/2026-09/
- │     API direta, sem MCP                          ├ manifest.json
+ │     API direta, sem conector pronto              ├ manifest.json
  │     archived=false + archived=true               └ <task_id>/arquivos
  │     lê as 3 gavetas de anexo, dedup por id
  │
@@ -42,7 +42,7 @@ impede os demais.
     │     filtra cliente e status                  <...>.xlsx.itens.json
     │     monta dados e planilha
     │     wb.save()        ◄── destrói a logo
-    │     injetar_logo()   ◄── cirurgia no zip, razão 3,5597
+    │     injetar_logo()   ◄── cirurgia no zip, por fora do openpyxl
     │
     ├─(3) recalc.py ──────────────────────────►  o mesmo .xlsx
     │     LibreOffice: grava o SUM em cache,
@@ -66,6 +66,11 @@ impede os demais.
 ```
 
 ## As decisões de projeto
+
+Cinco decisões explicam a forma do pipeline, e quase todas nasceram de algo que já tinha dado
+errado: uma alternativa que parecia boa e cobria menos da metade dos casos, um relatório
+entregue com o cabeçalho de outro cliente, defeitos de formato que atravessaram o ano inteiro
+sem ninguém ver.
 
 **Sinalizar em vez de adivinhar.** A relação entre comprovante e despesa não é um para um:
 um recibo pode cobrir duas despesas, uma despesa pode ter três recibos que somam o total, e uma
@@ -105,9 +110,10 @@ não represente como objeto nativo, o que obriga a logo a entrar depois do últi
 também não pode ser a última etapa, porque o arquivo sairia com a fórmula de soma sem valor em
 cache e quem abrisse a planilha pelo navegador veria a célula do total vazia. Quem grava esse
 cache é o LibreOffice headless, que preserva o drawing. Sobra uma ordem só, salvar, injetar,
-recalcular, e é por isso que o `recalc.py` é o lugar de qualquer ajuste final no arquivo. O mesmo
-passo controla a geometria: a âncora é reescrita para uma constante em EMU derivada da razão real
-do PNG, 3,5597, e termina com folga dentro da coluna B, porque o Excel tolera transbordo de
+recalcular, e é por isso que o `recalc.py` é o lugar de qualquer ajuste final no arquivo.
+
+Esse mesmo passo controla a geometria. A âncora é reescrita para uma constante derivada da razão
+real do PNG, 3,5597, e termina com folga dentro da coluna B, porque o Excel tolera transbordo de
 âncora e o LibreOffice corta, achatando a imagem sem avisar.
 
 **A publicação no Drive não usa integração nenhuma.** O passo 7 escreve no lugar certo do disco
@@ -118,7 +124,8 @@ falha de um jeito visível e local, não de um jeito silencioso e remoto.
 ## De onde vêm os arquivos no ClickUp
 
 A forma do pipeline é consequência direta da forma do dado, mapeada contra tarefas reais e não
-contra a documentação da API.
+contra a documentação da API. Esta seção termina numa falha real, e é por isso que ela existe:
+o que a gente achou que sabia sobre esse dado custou três prestações de contas incompletas.
 
 Uma despesa quase nunca tem um arquivo só. Um boleto de verdade dá dois, o documento e o
 comprovante. Um pedido de crédito ou QR Pix, o caso frequente, dá três, porque a plataforma só
@@ -126,21 +133,22 @@ emite o recibo oficial depois de compensar. Uma tarefa com vários boletos dá q
 a ordem dentro da despesa importar, documento primeiro e comprovante por último, e o fetch
 entregar os arquivos já agrupados por tarefa.
 
-E eles chegam por três portas, o que é a razão de o script falar HTTP direto com a API em vez de
-usar o servidor MCP: o campo do formulário, o anexo de resposta de comentário, e o array
-`attachments` da própria tarefa. A segunda é o caminho normal do comprovante e exige duas
-chamadas, porque o comentário-pai vem sem o anexo e a URL só aparece em `GET /comment/{id}/reply`;
-a ferramenta MCP equivalente descarta esse campo e devolve só o nome do arquivo dentro do texto,
-o que inviabiliza o download.
+E eles chegam por três portas, o que é a razão de o script falar HTTP direto com a API em vez
+de usar o servidor MCP, o conector pronto que entrega as ferramentas do ClickUp a um agente: o
+campo do formulário, o anexo de resposta de comentário, e o array `attachments` da própria
+tarefa. A segunda é o caminho normal do comprovante e exige duas chamadas, porque o
+comentário-pai vem sem o anexo e a URL só aparece em `GET /comment/{id}/reply`; a ferramenta
+MCP equivalente descarta esse campo e devolve só o nome do arquivo dentro do texto, o que
+inviabiliza o download.
 
 A terceira porta não é paralela às outras, e entender isso é o que faz o fetch ficar simples: ela
 é o inventário completo, superconjunto das demais, com os mesmos ids. As duas primeiras não dizem
 o que existe, dizem o papel de cada arquivo, e é o papel que determina a numeração. O que aparece
 só na terceira é arquivo que alguém largou na tarefa sem classificar, então o fetch lê as três,
 deduplica por id, e manda a despesa inteira para `_revisar/` quando sobra algo sem papel
-declarado. Descobrir isso custou três entregas erradas: o plano original registrou aquele array
-como "vazio em toda tarefa amostrada", a amostra virou premissa, e dois clientes receberam a
-prestação de contas sem um recibo que estava no ClickUp o tempo todo.
+declarado. Descobrir isso custou caro: o plano original registrou aquele array como "vazio em
+toda tarefa amostrada", a amostra virou premissa, e três clientes receberam a prestação de
+contas sem um recibo que estava no ClickUp o tempo todo.
 
 ## Estrutura
 
@@ -155,6 +163,10 @@ seguinte.
 Depende de Python 3 com openpyxl e de um LibreOffice para o recalc. O token da API vive em
 variável de ambiente, nunca em arquivo versionado.
 
+O que o mês virou, no fim, foi isto: a máquina faz a parte que é dedução, e devolve por escrito
+a parte que não é. Abrir arquivo e decidir continua sendo trabalho humano. Deixou de ser
+trabalho humano procurar o arquivo.
+
 ## Privacidade e licença
 
 O pipeline lida com dados financeiros de clientes: valores, métodos de pagamento e
@@ -162,4 +174,6 @@ comprovantes com nomes e contas. Nada disso é versionado. O `.gitignore` bloque
 planilhas geradas, recibos e o próprio registro de clientes, e os diretórios de trabalho
 vivem fora do repositório.
 
-Código proprietário, publicado como estudo de caso. Todos os direitos reservados.
+Código proprietário, publicado como estudo de caso. Todos os direitos reservados: repositório
+público não é código aberto, e ler para avaliar o trabalho é a única permissão concedida. Os
+termos estão em [LICENSE](LICENSE).

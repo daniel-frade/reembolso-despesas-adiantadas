@@ -30,3 +30,6 @@ scripts/__pycache__/
 # pasta oficial de cada um no Drive. O evals.json guarda prompts com dados reais.
 scripts/clientes_config.json
 evals/evals.json
+
+# --- Caminho local do .env: identifica o workspace de quem opera ---
+scripts/ambiente.sh

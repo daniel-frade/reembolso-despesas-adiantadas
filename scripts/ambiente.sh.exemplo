@@ -1,0 +1,8 @@
+# Copie para ambiente.sh e aponte para o seu .env, que precisa trazer as tres
+# variaveis abaixo. O ambiente.sh fica fora do versionado porque o caminho
+# identifica o workspace de quem opera.
+#
+#   CLICKUP_TOKEN=pk_...
+#   CLICKUP_FOLDER_ID=...   # a pasta do ano no ClickUp
+#   CLICKUP_SPACE_ID=...    # o espaco dos adiantamentos
+. "$HOME/caminho/para/o/projeto-do-crm/.env"

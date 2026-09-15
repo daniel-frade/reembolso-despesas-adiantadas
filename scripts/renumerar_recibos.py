@@ -31,8 +31,8 @@ Uso:
 
   # 2) atribuir os arquivos soltos e recompactar de uma vez
   python3 renumerar_recibos.py --pasta ".../<Cliente>/Recibos e comprovantes" \
-      --atribuir "Recibo_e-protocolo_20260708_2066124337.pdf=01" \
-      --atribuir "Imagem JPEG-47AA-972E-EE-0.jpeg=01"
+      --atribuir "Recibo_e-protocolo_20260708_0000000000.pdf=01" \
+      --atribuir "Imagem JPEG-0000-0000-00-0.jpeg=01"
 
 Arquivos soltos atribuídos à mesma demanda entram na ordem em que foram
 passados na linha de comando, depois dos que já estavam numerados.

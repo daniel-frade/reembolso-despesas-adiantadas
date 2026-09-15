@@ -7,6 +7,7 @@ So biblioteca padrao do Python (sem dependencias externas).
 
 Uso:
     export CLICKUP_TOKEN="pk_..."
+    export CLICKUP_FOLDER_ID="..."   # pasta do ano; ou passe --folder-id
     python3 clickup_adiantamentos_fetch.py --month "07 Julho 2026" --out ../2026-07/_raw
 
 O que faz, por tarefa da lista do mes:
@@ -42,7 +43,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 API_BASE = "https://api.clickup.com/api/v2"
-DEFAULT_FOLDER_ID = "901316047105"  # pasta "Adiantamentos - 2026" no workspace da NLR
+# Id da pasta do ano no ClickUp. Mora no .env junto do token, nao no codigo,
+# porque identifica o workspace de quem opera; --folder-id continua sobrepondo.
+DEFAULT_FOLDER_ID = os.environ.get("CLICKUP_FOLDER_ID")
 
 
 def api_get(token, path, params=None):
@@ -67,7 +70,7 @@ def api_get(token, path, params=None):
 
 def download_file(url, dest_path):
     dest_path.parent.mkdir(parents=True, exist_ok=True)
-    req = urllib.request.Request(url, headers={"User-Agent": "marvin-01-adiantamentos/1.0"})
+    req = urllib.request.Request(url, headers={"User-Agent": "adiantamentos-fetch/1.0"})
     with urllib.request.urlopen(req, timeout=60) as resp, open(dest_path, "wb") as f:
         f.write(resp.read())
 
@@ -280,7 +283,7 @@ def fetch_all_tasks(token, list_id):
     """Busca tarefas da lista, combinando ativas e arquivadas.
 
     A API do ClickUp esconde tarefas arquivadas por padrao (mesmo com
-    include_closed=true) -- e a NLR parece arquivar a tarefa assim que ela
+    include_closed=true) -- e o escritorio parece arquivar a tarefa assim que ela
     fica "reembolsado pelo cliente" / "done", entao sem isso a maior parte
     do mes desaparece silenciosamente. Buscamos os dois grupos e juntamos.
     """
@@ -303,7 +306,8 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--month", required=True, help='Nome exato da lista no ClickUp, ex: "07 Julho 2026"')
     parser.add_argument("--out", required=True, help="Pasta de saida para manifest + arquivos baixados")
-    parser.add_argument("--folder-id", default=DEFAULT_FOLDER_ID, help="ID da pasta ClickUp (default: Adiantamentos - 2026)")
+    parser.add_argument("--folder-id", default=DEFAULT_FOLDER_ID, required=not DEFAULT_FOLDER_ID,
+                        help="ID da pasta do ano no ClickUp (default: $CLICKUP_FOLDER_ID)")
     parser.add_argument("--status", action="append", help="Filtrar por status (pode repetir). Default: todos.")
     parser.add_argument("--limit", type=int, default=None, help="Limitar numero de tarefas processadas (uso em teste)")
     parser.add_argument("--dry-run", action="store_true", help="Nao baixa arquivos, so lista o que baixaria (teste rapido)")

@@ -7,17 +7,18 @@ Varre TODAS as listas de adiantamento de um cliente e diz o que nunca foi
 cobrado, comparando com os sidecars .itens.json das planilhas já entregues.
 
 Por que existe: o fluxo do mês olha a lista daquele mês, e uma tarefa na lista
-errada é invisível para todo mundo. Em agosto/2026 o "Adiantamento Uber
-Santander" de um cliente acumulativo foi criado em 26/08 dentro da lista de junho:
-não entrou no relatório de julho, não entrou no de agosto, e só apareceu porque
-o Daniel desconfiou do total. Uma demanda de R$ 15,94 achada por intuição é
-sorte, não processo.
+errada é invisível para todo mundo. Em agosto/2026 uma corrida de aplicativo de
+um cliente acumulativo foi criada em 26/08 dentro da lista de junho: não entrou
+no relatório de julho, não entrou no de agosto, e só apareceu porque o Daniel
+desconfiou do total. Uma demanda de R$ 15,94 achada por intuição é sorte, não
+processo.
 
 A comparação é por task_id, que é a única chave estável: o nome da tarefa se
 repete entre meses e entre casos.
 
 Uso:
-  export CLICKUP_TOKEN="pk_..."   # ou carregue o .env do CRM
+  export CLICKUP_TOKEN="pk_..."    # ou carregue o .env do CRM, que traz os tres
+  export CLICKUP_SPACE_ID="..."    # espaco dos adiantamentos; dispensavel com --folder-id
 
   # tudo que existe do cliente, contra o que já foi entregue
   python3 varrer_cliente.py --cliente "{Nome no ClickUp}" \\
@@ -50,7 +51,9 @@ from clickup_adiantamentos_fetch import (  # noqa: E402
 # A escada documentada em SKILL.md. Fora dela nao se deduz nada.
 LIQUIDADOS = {'pago pelo cliente', 'reembolsado pelo cliente'}
 CONHECIDOS = LIQUIDADOS | {'to do', 'approved', 'solicitado reembolso'}
-ESPACO_ADIANTAMENTOS = '90070357388'
+# Id do espaco no ClickUp. Mesmo motivo do folder no fetch: identifica o
+# workspace de quem opera, entao mora no .env, nao aqui.
+ESPACO_ADIANTAMENTOS = os.environ.get('CLICKUP_SPACE_ID')
 
 
 def e_arquivo(nome_pasta):
@@ -125,6 +128,9 @@ def main():
     if args.folder_id:
         pastas = [(fid, '') for fid in args.folder_id]
     else:
+        if not ESPACO_ADIANTAMENTOS:
+            sys.exit('ERRO: CLICKUP_SPACE_ID nao esta no ambiente. Carregue o .env '
+                     'do CRM ou passe --folder-id.')
         pastas = pasta_do_ano(token, ESPACO_ADIANTAMENTOS, args.ano)
     alvo = {c.strip().lower() for c in args.cliente}
     entregues = task_ids_entregues(args.entregas)

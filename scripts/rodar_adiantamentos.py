@@ -11,7 +11,7 @@ build_relatorio.py, recalc.py e organizar_recibos.py, um comando por mês.
 Uso:
   python3 rodar_adiantamentos.py --mes-clickup "07 Julho 2026" \
       --mes-nome Julho --ano 2026 \
-      --out ~/Desktop/marvin-01/workspace/nlr/automacoes-financeiras/reembolso-despesas-adiantadas \
+      --out ".../reembolso-despesas-adiantadas" \
       --publicar-drive
 
   # Só um cliente, sem tocar no Drive (ex.: teste/depuração):
