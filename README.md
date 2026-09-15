@@ -2,23 +2,59 @@
 
 Automação em Python do fechamento mensal de reembolsos de despesas em um escritório de
 advocacia: do dado bruto no ClickUp até o `.xlsx` formatado e os comprovantes numerados,
-publicados na pasta oficial de cada cliente no Google Drive. O mês inteiro sai de um comando, e
-o trabalho humano que sobra é só o que não é inferível do dado. São 8 scripts e 2.300 linhas.
+salvos na pasta de cada cliente no Google Drive, prontos para envio. O mês inteiro sai de um
+comando, e o trabalho humano que sobra é só o que não é inferível do dado. São 8 scripts e
+2.300 linhas.
 
 ## O problema
 
 O escritório adianta custas de cartório, junta comercial e registro de imóveis com o próprio
-caixa, e cobra o reembolso dos clientes depois. Cada despesa nasce como uma tarefa no ClickUp, aberta
-por formulário, com o boleto ou o pedido de pagamento anexado no campo do formulário. O
-comprovante bancário chega dias depois, anexado à tarefa, e o recibo
-oficial que algumas plataformas só emitem após o pagamento chega depois disso.
+caixa e cobra o reembolso dos clientes depois. Todo mês isso vira uma prestação de contas por
+cliente: uma planilha com uma linha por despesa, no layout padrão do escritório, e uma pasta de
+comprovantes numerados na mesma ordem. É documento que sai do escritório e chega a quem paga a
+conta, então erro ali não é defeito de software, é valor cobrado errado.
 
-No fim do mês, é necessário transformar esse material em prestação de contas por cliente: uma
-planilha com uma linha por despesa, no layout que aquele cliente já recebe há meses, mais uma
-pasta de comprovantes numerados na mesma ordem da planilha. À mão, isso era abrir tarefa por
-tarefa, baixar anexo por anexo, montar a planilha e depois casar cada comprovante com cada
-despesa lendo valor, data e favorecido dentro de cada arquivo, com o script de geração
-reescrito por cliente, todo mês.
+O volume é modesto e o trabalho não. Um mês típico tem em torno de 40 despesas espalhadas por
+dez clientes, e essas 40 despesas carregam cerca de 110 arquivos. Nada disso chega junto nem
+pelo mesmo caminho. O boleto vem no campo do formulário da tarefa, o comprovante bancário
+aparece dias depois como resposta de comentário, e o recibo oficial depois disso.
+
+Montar a entrega à mão era isto: abrir a planilha do mês anterior como modelo, exportar o CSV do
+ClickUp e ir colando de um para o outro, cliente por cliente. Depois baixar cada recibo e cada
+comprovante, um a um, e renomear um a um, na ordem da planilha. Dois a três dias de trabalho,
+todo mês, por quase três anos.
+
+## Um comando, o mês inteiro
+
+Seis a oito clientes por rodada, algumas dezenas de despesas, do dado bruto no ClickUp até a
+pasta pronta para enviar:
+
+- **Coleta.** Lê a lista do mês na API, arquivadas e não arquivadas, e baixa os anexos das três
+  portas em que eles se escondem, deduplicando por id.
+- **Planilha.** Uma linha por despesa, em ordem cronológica, no layout exato daquele cliente:
+  fonte, larguras, logo, total em fórmula com o valor em cache.
+- **Conferência.** Compara o arquivo pronto com a especificação escrita, vinte e poucas
+  asserções, e devolve cada violação como pendência.
+- **Comprovantes.** Numera no padrão `XX.YY` o que é inequívoco e separa o resto em `_revisar/`,
+  com o motivo.
+- **Varredura.** Nos clientes de cobrança acumulativa, procura no ano inteiro despesa paga que
+  nunca foi cobrada.
+- **Publicação.** Copia a entrega para a pasta oficial do cliente no Drive.
+
+O ganho é tempo, e é o grosso daqueles dois a três dias. Ele nunca esteve na planilha: estava em
+abrir 25 tarefas, baixar 70 arquivos e descobrir, um por um, qual pertence a qual despesa. A
+prestação de contas sempre saiu correta, e saiu correta porque alguém conferia 70 arquivos todo
+mês para que ela saísse. O que a automação eliminou foi essa conferência, não o cuidado dela.
+
+Automatizar, por outro lado, cria um risco que o trabalho manual não tinha: errar rápido e em
+silêncio. Daí o pipeline levar junto um conferidor que valida cada arquivo produzido contra a
+especificação escrita, e daí a violação virar pendência em vez de exceção. Há também uma coisa
+que a máquina enxerga e a conferência humana não enxergava, porque ninguém olha doze meses ao
+mesmo tempo: a despesa paga e arquivada na lista do mês errado, que a varredura anual encontrou
+valendo R$ 15,94 e dois meses de atraso.
+
+A escala vem de graça: cliente novo é uma entrada em arquivo de configuração, não uma variante
+do script, então atender o sétimo custa o mesmo que atender o sexto.
 
 ## Como a skill roda
 
@@ -65,12 +101,11 @@ propósito. Nada disso trava no meio: cliente com erro não impede os demais.
    enviar · mover as tarefas para o status seguinte
 ```
 
-## As decisões de projeto
+## Cinco decisões e o porquê de cada uma
 
-Cinco decisões explicam a forma do pipeline, e quase todas nasceram de algo que já tinha dado
-errado: uma alternativa que parecia boa e cobria menos da metade dos casos, um relatório
-entregue com o cabeçalho de outro cliente, defeitos de formato que atravessaram o ano inteiro
-sem ninguém ver.
+Quase todas nasceram de algo que já tinha dado errado: uma alternativa que parecia boa e cobria
+menos da metade dos casos, um relatório entregue com o cabeçalho de outro cliente, defeitos de
+formato que atravessaram o ano inteiro sem ninguém ver.
 
 **Sinalizar em vez de adivinhar.** A relação entre comprovante e despesa não é um para um:
 um recibo pode cobrir duas despesas, uma despesa pode ter três recibos que somam o total, e uma
@@ -121,7 +156,7 @@ local e o cliente do Google Drive sincroniza sozinho. Sem OAuth, sem escopo de A
 para renovar, sem tratar retomada de upload. O custo é a dependência de uma pasta montada, que
 falha de um jeito visível e local, não de um jeito silencioso e remoto.
 
-## De onde vêm os arquivos no ClickUp
+## Engenharia reversa da API do ClickUp
 
 A forma do pipeline é consequência direta da forma do dado, mapeada contra tarefas reais e não
 contra a documentação da API. Esta seção termina numa falha real, e é por isso que ela existe:
@@ -162,6 +197,9 @@ seguinte.
 
 Depende de Python 3 com openpyxl e de um LibreOffice para o recalc. O token da API vive em
 variável de ambiente, nunca em arquivo versionado.
+
+Em produção desde julho de 2026, em fechamentos mensais consecutivos. O processo que ela
+substituiu era feito à mão desde 2023.
 
 O que o mês virou, no fim, foi isto: a máquina faz a parte que é dedução, e devolve por escrito
 a parte que não é. Abrir arquivo e decidir continua sendo trabalho humano. Deixou de ser
