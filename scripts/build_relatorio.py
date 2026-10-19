@@ -433,6 +433,9 @@ def montar_planilha(dados, titulo, rotulo_h, arquivo_referencia=None):
         cell.font = Font(name=CALIBRI, size=TITLE_SIZE, bold=True)
         cell.border = BORDER
         cell.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
+    # Formato explícito: com sete colunas o total em G herdava moeda do --ref,
+    # e com a coluna H ficava em Geral (visto pelo Daniel em 19/10/2026).
+    ws['%s2' % col_total].number_format = 'R$ #,##0.00'
 
     # Linha 3: cabeçalho
     # H é a coluna extra do cliente e o rótulo muda com ela: "Empresa" no
@@ -659,29 +662,62 @@ def resolver_drive_root(explicito=None):
     return sorted(canonicos or candidatos)[0]
 
 
-def publicar_no_drive(arquivo_local, cliente_cfg, mes, ano, drive_root=None):
-    """Copia o .xlsx já pronto (com logo) pro caminho oficial do cliente no
-    Google Drive, resolvido a partir de `destino_drive` em clientes_config.json.
-    Só copia, não reescreve o arquivo já sincronizado várias vezes; o
-    arquivo é montado inteiro localmente antes (ver main()) e só entra na
-    pasta sincronizada numa única cópia atômica no fim."""
+def destino_no_drive(cliente_cfg, mes, ano, drive_root=None):
+    """Pasta oficial do cliente no mount do Drive para o mês, ou (None, erro)."""
     template = cliente_cfg.get('destino_drive')
     if not template:
         return None, 'destino_drive não configurado pra este cliente em clientes_config.json'
-
     root = resolver_drive_root(drive_root)
     if not root or not os.path.isdir(root):
         return None, 'raiz do Google Drive não encontrada (Drive Desktop instalado/sincronizado?)'
-
     mm = _MESES_NUM.get(mes.strip().lower(), '00')
-    caminho_relativo = template.format(ano=ano, mm=mm, mes_nome=mes)
-    destino_dir = os.path.join(root, caminho_relativo)
-    os.makedirs(destino_dir, exist_ok=True)
-    destino_arquivo = os.path.join(destino_dir, os.path.basename(arquivo_local))
+    return os.path.join(root, template.format(ano=ano, mm=mm, mes_nome=mes)), None
+
+
+def arquivos_da_entrega(arquivo_local):
+    """A entrega é a planilha mais a pasta de comprovantes. Devolve os caminhos
+    relativos à pasta da planilha, que são os mesmos no Drive."""
+    base = os.path.dirname(arquivo_local)
+    rel = [os.path.basename(arquivo_local)]
+    recibos = os.path.join(base, 'Recibos e comprovantes')
+    if os.path.isdir(recibos):
+        rel += [os.path.join('Recibos e comprovantes', fn) for fn in sorted(os.listdir(recibos))
+                if os.path.isfile(os.path.join(recibos, fn)) and not fn.startswith('.')]
+    return base, rel
+
+
+def divergencias_no_drive(arquivo_local, destino_dir):
+    """Compara byte a byte cada arquivo da entrega com a cópia no mount do Drive.
+    Prova que a cópia chegou ao disco, não que o Drive terminou de subir: a
+    conferência na nuvem é pelo conector, ver SKILL.md, etapa 5."""
+    import filecmp
+    base, rel = arquivos_da_entrega(arquivo_local)
+    return [r for r in rel if not os.path.isfile(os.path.join(destino_dir, r))
+            or not filecmp.cmp(os.path.join(base, r), os.path.join(destino_dir, r), shallow=False)]
+
+
+def publicar_no_drive(arquivo_local, cliente_cfg, mes, ano, drive_root=None):
+    """Copia a planilha e a pasta de comprovantes para a pasta oficial do cliente
+    no Google Drive (`destino_drive` em clientes_config.json) e confere a cópia.
+    Até 19/10/2026 só o orquestrador copiava os comprovantes, e só no mesmo run
+    da geração, antes da triagem: publicava os automáticos sem poda e pulava o
+    _revisar. Por isso a publicação recusa enquanto existir _revisar."""
+    recibos_local = os.path.join(os.path.dirname(arquivo_local), 'Recibos e comprovantes')
+    if os.path.isdir(os.path.join(recibos_local, '_revisar')):
+        return None, 'triagem não terminou: ainda existe _revisar em %s' % recibos_local
+    destino_dir, erro = destino_no_drive(cliente_cfg, mes, ano, drive_root)
+    if erro:
+        return None, erro
 
     import shutil
-    shutil.copy2(arquivo_local, destino_arquivo)
-    return destino_arquivo, None
+    base, rel = arquivos_da_entrega(arquivo_local)
+    for r in rel:
+        os.makedirs(os.path.dirname(os.path.join(destino_dir, r)), exist_ok=True)
+        shutil.copy2(os.path.join(base, r), os.path.join(destino_dir, r))
+    falhas = divergencias_no_drive(arquivo_local, destino_dir)
+    if falhas:
+        return None, 'cópia no Drive diverge da local: %s' % ', '.join(falhas)
+    return os.path.join(destino_dir, os.path.basename(arquivo_local)), None
 
 
 def main():

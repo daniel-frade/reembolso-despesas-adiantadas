@@ -164,6 +164,9 @@ def conferir(caminho, itens=None, total=None, nome_entrega=None):
         repr(formula))
     add('O SUM tem valor em cache, senão o cliente abre a célula vazia',
         isinstance(cache, (int, float)), repr(cache))
+    fmt_total = ws['%s2' % ultima].number_format
+    add('Total em formato de moeda, como a coluna D',
+        'R$' in fmt_total and '0.00' in fmt_total, repr(fmt_total))
 
     # ---- janela ----------------------------------------------------------
     if 'xl/workbook.xml' in partes:

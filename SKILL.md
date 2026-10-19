@@ -212,8 +212,47 @@ declaração de fato do Daniel e nunca se escreve nele por script**; o que se fa
 são. Não dizer deixa o ClickUp atrasado em relação ao que o cliente já recebeu: em setembro/2026
 nove tarefas de um cliente estavam paradas, uma desde a cobrança de 11/08.
 
-Só depois da aprovação do Daniel. `--publicar-drive` copia para a pasta oficial do cliente
-(`destino_drive` no config); cliente com `destino_drive: null` fica só local.
+Só depois da aprovação do Daniel, e sem regerar, porque regerar apaga a triagem:
+
+```bash
+python3 scripts/rodar_adiantamentos.py --mes-clickup "09 Setembro 2026" \
+    --mes-nome Setembro --ano 2026 --out ".../reembolso-despesas-adiantadas" \
+    --clientes "<cliente>" --so-publicar
+```
+
+Copia a planilha e a pasta `Recibos e comprovantes` para a pasta oficial do cliente
+(`destino_drive` no config) e recusa enquanto existir `_revisar`. Cliente com
+`destino_drive: null` fica só local. A cópia é de arquivo comum, para o mount do Drive Desktop,
+sem API, e o script já compara byte a byte cada arquivo com o que caiu no mount.
+
+### 6. Conferir na nuvem
+
+A comparação do script prova que a cópia chegou ao disco, não que o Drive Desktop terminou de
+subir. Em 19/10/2026 a primeira publicação foi dada como conferida só pelo mount, e o Daniel
+perguntou se estava no Drive: não estava verificado. Pelo conector do Google Drive, ache a pasta
+do mês (`title = '<mm>-<Mês>'`) e liste o conteúdo dela e de `Recibos e comprovantes` com
+`parentId = '<id>'`. Confira que cada arquivo local está lá com o **mesmo nome e o mesmo
+`fileSize`**, sem arquivo a mais. Arquivo faltando costuma ser sincronização em andamento:
+espere e liste de novo antes de concluir que falhou. Diga ao Daniel o que foi comparado, nome e
+tamanho, e não conteúdo.
+
+### 7. Limpar o output
+
+Só depois da conferência na nuvem:
+
+```bash
+python3 scripts/rodar_adiantamentos.py --mes-clickup "09 Setembro 2026" \
+    --mes-nome Setembro --ano 2026 --out ".../reembolso-despesas-adiantadas" \
+    --clientes "<cliente>" --limpar
+```
+
+Apaga de `output/` a planilha e os comprovantes do cliente, mas só se cada arquivo estiver
+idêntico no mount do Drive; uma divergência trava o cliente inteiro, sem apagar nada. O
+`.itens.json` fica, porque é por ele que o `varrer_cliente.py` sabe o que já foi cobrado. Exceção: cliente com `apagar_itens_json_ao_limpar: true` no config perde também o
+`.itens.json`; em 19/10/2026 o Daniel decidiu assim para dois clientes mensais, cuja cobrança fica
+registrada pelo status no ClickUp. O Drive
+passa a ser a cópia de referência, de onde também sai a logo do mês seguinte. `input/` não se
+limpa aqui: guarda os brinks descartados, e os sidecars apontam para ele.
 
 ## O que continua sendo decisão humana
 
@@ -341,7 +380,8 @@ reembolso-despesas-adiantadas/
   scripts/                      ← scripts avulsos de mês fechado, não a skill
 ```
 
-A pasta do cliente contém **apenas** o `.xlsx` e a subpasta de comprovantes, sem arquivo solto.
+A pasta do cliente contém **apenas** o `.xlsx` e a subpasta de comprovantes, sem arquivo solto. Depois da etapa 7, sobra nela só o `.itens.json`; sem ele, a pasta do mês sai, e a do cliente
+também, quando fica vazia.
 `input/` preserva os brinks descartados e os arquivos ainda não usados; os caminhos dentro dos
 `.xlsx.itens.json` apontam para lá, então movê-la depois de gerar exige reescrever esses
 caminhos.
@@ -363,7 +403,9 @@ como as duas fontes divergem sem ninguém notar. Confira o que depende de julgam
 - [ ] Relação 1:N e N:1 tratada (arquivo duplicado quando um recibo cobre duas demandas)
 - [ ] Consolidada: comprovantes do mês reaproveitado remapeados pelo valor
 - [ ] Recalc sem erros e logo presente no arquivo final
-- [ ] Publicação no Drive só depois da aprovação do Daniel
+- [ ] Publicação no Drive só depois da aprovação do Daniel e com `--so-publicar`, sem regerar
+- [ ] Cópia conferida na nuvem pelo conector: mesmo nome e mesmo tamanho, nada a mais
+- [ ] `--limpar` só depois da conferência na nuvem
 
 ## Referências
 

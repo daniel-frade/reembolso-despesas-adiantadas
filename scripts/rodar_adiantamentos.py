@@ -33,7 +33,8 @@ import sys
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, SCRIPT_DIR)
-from build_relatorio import publicar_no_drive, resolver_drive_root  # noqa: E402
+from build_relatorio import (publicar_no_drive, resolver_drive_root, destino_no_drive,  # noqa: E402
+                             divergencias_no_drive, arquivos_da_entrega)
 
 _MESES_ORDEM = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho',
                 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro']
@@ -157,14 +158,6 @@ def processar_cliente(nome_cliente, cfg, args, manifest_path, out_dir):
         publicado_em, erro = publicar_no_drive(saida, cfg, args.mes_nome, args.ano, args.drive_root)
         if erro:
             pendencias.append('Publicação no Drive (%s): %s' % (nome_cliente, erro))
-        elif os.path.isdir(destino_recibos):
-            destino_drive_recibos = os.path.join(os.path.dirname(publicado_em), 'Recibos e comprovantes')
-            os.makedirs(destino_drive_recibos, exist_ok=True)
-            import shutil
-            for fn in os.listdir(destino_recibos):
-                origem = os.path.join(destino_recibos, fn)
-                if os.path.isfile(origem):
-                    shutil.copy2(origem, os.path.join(destino_drive_recibos, fn))
 
     # Quais tarefas o Daniel precisa mover depois de enviar. O status e
     # declaracao de fato dele e eu nunca escrevo nele, mas nao dizer quais sao
@@ -189,6 +182,40 @@ def processar_cliente(nome_cliente, cfg, args, manifest_path, out_dir):
     }
 
 
+def limpar_publicado(nome, saida, cfg, args):
+    # So apaga o que esta identico no Drive; uma divergencia trava o cliente
+    # inteiro, e a copia local continua sendo a unica boa.
+    destino_dir, erro = destino_no_drive(cfg, args.mes_nome, args.ano, args.drive_root)
+    if erro:
+        return {'cliente': nome, 'erro': erro}
+    falhas = divergencias_no_drive(saida, destino_dir)
+    if falhas:
+        return {'cliente': nome, 'erro': 'não apaguei nada, diverge do Drive: %s' % ', '.join(falhas)}
+    base, rel = arquivos_da_entrega(saida)
+    for r in rel:
+        os.remove(os.path.join(base, r))
+    recibos = os.path.join(base, 'Recibos e comprovantes')
+    if os.path.isdir(recibos):
+        for fn in os.listdir(recibos):
+            if fn.startswith('.'):
+                os.remove(os.path.join(recibos, fn))
+        os.rmdir(recibos)
+    sidecar = saida + '.itens.json'
+    if cfg.get('apagar_itens_json_ao_limpar') and os.path.isfile(sidecar):
+        os.remove(sidecar)
+        rel.append(os.path.basename(sidecar))
+    # Pasta que sobrou so com lixo do Finder sai junto, a do mes e a do cliente.
+    for pasta in (base, os.path.dirname(base)):
+        if os.path.isdir(pasta) and all(fn.startswith('.') for fn in os.listdir(pasta)):
+            for fn in os.listdir(pasta):
+                os.remove(os.path.join(pasta, fn))
+            os.rmdir(pasta)
+    resultado = {'cliente': nome, 'apagados': len(rel)}
+    if os.path.isfile(sidecar):
+        resultado['mantido'] = sidecar
+    return resultado
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument('--mes-clickup', required=True, help='Nome exato da lista no ClickUp, ex: "07 Julho 2026"')
@@ -200,6 +227,14 @@ def main():
     ap.add_argument('--clientes', help='Lista separada por vírgula pra restringir (default: todos em clientes_config.json)')
     ap.add_argument('--status', help='Filtro de status pro fetch + build (default: sem filtro no fetch, approved no build)')
     ap.add_argument('--publicar-drive', action='store_true', help='Publica os .xlsx + recibos organizados na pasta oficial de cada cliente no Drive')
+    ap.add_argument('--so-publicar', action='store_true',
+                    help='Não busca nem gera: publica no Drive o que já está em output/, depois da '
+                         'triagem e da aprovação do Daniel. É o caminho normal da etapa 5')
+    ap.add_argument('--limpar', action='store_true',
+                    help='Depois de publicar e conferir na nuvem: apaga de output/ a planilha e os '
+                         'comprovantes que estão idênticos no Drive. Mantém o .itens.json, que a '
+                         'varredura usa para saber o que já foi cobrado, salvo no cliente com '
+                         'apagar_itens_json_ao_limpar no config')
     ap.add_argument('--drive-root', help='Raiz do Google Drive (default: autodetectar)')
     ap.add_argument('--dry-run', action='store_true', help='Passa --dry-run pro fetch (não baixa arquivos, só lista tarefas)')
     args = ap.parse_args()
@@ -216,6 +251,37 @@ def main():
     args.mes_pasta = '%s-%s' % (args.ano, mm)
     raw_dir = os.path.join(base_dir, 'input', args.mes_pasta)
     out_dir = os.path.join(base_dir, 'output')
+
+    if args.so_publicar or args.limpar:
+        # Regerar apagaria a triagem dos comprovantes, entao a publicacao de um
+        # mes ja revisado le direto o que esta em output/.
+        with open(args.config, encoding='utf-8') as f:
+            cfg_todos = json.load(f)
+        cfg_todos.pop('_comentario', None)
+        nomes = [c.strip() for c in args.clientes.split(',')] if args.clientes else list(cfg_todos)
+        publicados = []
+        for nome in nomes:
+            cfg = cfg_todos[nome]
+            entrega = cfg.get('nome_entrega', nome)
+            pasta = os.path.join(out_dir, cfg.get('pasta', entrega))
+            if not cfg.get('pasta_fora_calendario'):
+                pasta = os.path.join(pasta, args.mes_pasta)
+            # Pelo nome do mes nao serve: a consolidada se chama Agosto-e-Setembro.
+            import glob
+            planilhas = glob.glob(os.path.join(glob.escape(pasta), '*.xlsx'))
+            if len(planilhas) != 1:
+                publicados.append({'cliente': nome, 'erro': 'esperava uma planilha em %s, achei %d'
+                                   % (pasta, len(planilhas))})
+                continue
+            saida = planilhas[0]
+            if args.limpar:
+                publicados.append(limpar_publicado(nome, saida, cfg, args))
+                continue
+            destino, erro = publicar_no_drive(saida, cfg, args.mes_nome, args.ano, args.drive_root)
+            publicados.append({'cliente': nome, 'publicado_em': destino, 'erro': erro})
+        print(json.dumps(publicados, ensure_ascii=False, indent=2))
+        return
+
     os.makedirs(raw_dir, exist_ok=True)
 
     fetch_cmd = [os.path.join(SCRIPT_DIR, 'clickup_adiantamentos_fetch.py'),
