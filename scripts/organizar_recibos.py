@@ -20,7 +20,7 @@ entra na lista de pendências impressa no final, pra decisão humana (ver
 SKILL.md, seção "Relação comprovante <-> demanda não é sempre 1:1").
 
 Uso:
-  python3 organizar_recibos.py --itens SuperNosso-Julho-2026.xlsx.itens.json \
+  python3 organizar_recibos.py --itens Cliente-Julho-2026.xlsx.itens.json \
       --destino "<Cliente>/Recibos e comprovantes"
 """
 import argparse

@@ -18,8 +18,8 @@ organizar_recibos.py pra renomear/organizar os comprovantes.
 
 Uso:
   python3 build_relatorio.py --cliente "<cliente>" --csv export.csv \
-      --mes Abril --ano 2026 --ref SuperNosso-Marco-2026.xlsx \
-      --saida SuperNosso-Abril-2026.xlsx
+      --mes Abril --ano 2026 --ref Cliente-Marco-2026.xlsx \
+      --saida Cliente-Abril-2026.xlsx
 
   python3 build_relatorio.py --cliente "<cliente>" --manifest _raw/manifest.json \
       --mes Julho --ano 2026 --pasta-referencia ../06-Junho --publicar-drive
