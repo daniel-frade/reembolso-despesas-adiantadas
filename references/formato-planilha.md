@@ -121,9 +121,14 @@ Ordem obrigatória, e ela não perdoa: **openpyxl `save()` → injetar logo → 
 LibreOffice**. Qualquer `save()` do openpyxl depois da injeção apaga o drawing de novo. O
 recalc do LibreOffice preserva.
 
-Se o `.xlsx` do próprio cliente não abrir (`Resource deadlock avoided`, `BadZipFile`, típico de
-falha temporária do mount do Google Drive), use como `--ref` o relatório mais recente de
-qualquer outro cliente: a logo é a mesma do escritório em todos.
+**De onde vem a referência.** Primeiro o `--ref`, depois o mês anterior do cliente no Drive
+(`--pasta-referencia`, que o orquestrador resolve sozinho). Sem nenhum dos dois, cliente novo ou
+ano novo, entra `assets/logo-template.xlsx`: uma planilha vazia com só a logo do escritório,
+gerada em 20/10/2026 sem nenhuma linha de cliente. Da referência, o `montar_planilha()` usa o
+workbook como base e apaga o valor de todas as células, e o `injetar_logo()` lê só o drawing e
+a imagem; nada do conteúdo dela chega ao relatório. Se o `.xlsx` do próprio cliente não abrir
+(`Resource deadlock avoided`, `BadZipFile`, típico de falha temporária do mount do Google
+Drive), passe o template como `--ref`.
 
 **A geometria não vem da referência.** Copiar o drawing inteiro trazia junto o tamanho que a
 imagem tinha no arquivo de origem, e cada cliente carregava uma proporção diferente, todas

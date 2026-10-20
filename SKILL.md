@@ -213,10 +213,8 @@ identifica pelo conteúdo, nunca pelo nome antigo.
 ### 5. Entregar
 
 O resumo traz `depois_de_enviar.tarefas_por_cliente`, a lista de `task_id` que precisa sair de
-`approved` para `solicitado reembolso` depois que a cobrança for enviada. **O status é
-declaração de fato do Daniel e nunca se escreve nele por script**; o que se faz é dizer quais
-são. Não dizer deixa o ClickUp atrasado em relação ao que o cliente já recebeu: em setembro/2026
-nove tarefas de um cliente estavam paradas, uma desde a cobrança de 11/08.
+`approved` para `solicitado reembolso` depois que a cobrança for enviada. Guarde essa lista: é
+ela que a etapa 7 move.
 
 Só depois da aprovação do Daniel, e sem regerar, porque regerar apaga a triagem:
 
@@ -242,9 +240,31 @@ do mês (`title = '<mm>-<Mês>'`) e liste o conteúdo dela e de `Recibos e compr
 espere e liste de novo antes de concluir que falhou. Diga ao Daniel o que foi comparado, nome e
 tamanho, e não conteúdo.
 
-### 7. Limpar o output
+### 7. Depois do envio: conferir no Gmail e mover o status
 
-Só depois da conferência na nuvem:
+O Daniel envia as cobranças, muitas vezes agendadas. Depois do horário, para cada cliente:
+
+1. Achar a mensagem no Gmail (`search_threads` com `in:sent`) e confirmar o rótulo `SENT`, o
+   destinatário e que ela não está mais em `in:scheduled`.
+2. Só para o cliente cujo e-mail saiu: ler cada tarefa da lista da etapa 5 e, se ainda estiver em
+   `approved`, mover para `solicitado reembolso`, mudando só o status. Tarefa em outro status não
+   se toca, só se relata.
+3. Relatar ao Daniel o que saiu, o que foi movido (nome da tarefa com link) e o que ficou.
+
+**O status não se escreve por script.** É declaração de fato: o fato aqui é o envio confirmado no
+Gmail, e a mudança é feita pelo MCP do ClickUp, tarefa por tarefa, nunca pelo orquestrador.
+Autorizado pelo Daniel em 20/10/2026 como rotina para esta transição e só para ela. E-mail que
+não saiu, cobrança que depende de aprovação de outra pessoa antes de ir ao cliente, ou qualquer
+outra transição (`pago pelo cliente`, `reembolsado pelo cliente`) continuam com ele. Não mover
+deixa o ClickUp atrasado em relação ao que o cliente já recebeu: em setembro/2026 nove tarefas de
+um cliente estavam paradas, uma desde a cobrança de 11/08.
+
+### 8. Limpar, por último
+
+Só depois que o e-mail daquele cliente saiu e o status foi movido na etapa 7. A limpeza é a
+última etapa porque até o envio a cópia local ainda tem uso: é de onde se anexa, e é o que se
+corrige se algo mudar antes de a cobrança sair. Depois do envio, o fato está no Gmail, a
+entrega no Drive e o registro no ClickUp, e o disco não guarda mais nada que falte:
 
 ```bash
 python3 scripts/rodar_adiantamentos.py --mes-clickup "09 Setembro 2026" \
@@ -257,8 +277,13 @@ idêntico no mount do Drive; uma divergência trava o cliente inteiro, sem apaga
 `.itens.json` fica, porque é por ele que o `varrer_cliente.py` sabe o que já foi cobrado. Exceção: cliente com `apagar_itens_json_ao_limpar: true` no config perde também o
 `.itens.json`; em 19/10/2026 o Daniel decidiu assim para dois clientes mensais, cuja cobrança fica
 registrada pelo status no ClickUp. O Drive
-passa a ser a cópia de referência, de onde também sai a logo do mês seguinte. `input/` não se
-limpa aqui: guarda os brinks descartados, e os sidecars apontam para ele.
+passa a ser a cópia de referência, de onde também sai a logo do mês seguinte.
+
+Quando não sobra planilha nenhuma em `output/`, de nenhum cliente, o mesmo comando apaga
+`input/{ano-mm}/`. O bruto só serve até a triagem: a entrega está no Drive, o original continua
+no ClickUp, e a rodada seguinte baixa tudo de novo. Planilha ainda em `output/` trava a limpeza,
+porque alguém pode precisar regerar. Os caminhos gravados nos sidecars passam a apontar para o
+nada, e nenhum script volta a usá-los: a varredura lê só o `task_id`.
 
 ## O que continua sendo decisão humana
 
@@ -368,10 +393,9 @@ acumulativos têm uma planilha só cobrindo vários meses e nunca couberam numa 
 ```
 reembolso-despesas-adiantadas/
   input/
-    2026-07/                    ← download bruto do mês; não apagar antes de fechar os clientes
+    2026-07/                    ← download bruto do mês; sai na etapa 8, com o output vazio
       manifest.json
       <task_id>/                ← uma pasta por task_id
-    <Cliente>/                  ← quando o fetch é por cliente, caso retroativo
   output/
     <Cliente>/                  ← mensal: uma subpasta por mês
       2026-07/
@@ -382,15 +406,16 @@ reembolso-despesas-adiantadas/
     <Cliente acumulativo>/      ← sem subpasta de mês (pasta_fora_calendario no config)
       <Cliente>-Janeiro-a-Julho-2026.xlsx
       Recibos e comprovantes/
-  refs/                         ← logo-referencia.xlsx, o `--ref` de quem não tem mês anterior
-  scripts/                      ← scripts avulsos de mês fechado, não a skill
 ```
 
-A pasta do cliente contém **apenas** o `.xlsx` e a subpasta de comprovantes, sem arquivo solto. Depois da etapa 7, sobra nela só o `.itens.json`; sem ele, a pasta do mês sai, e a do cliente
+O workspace tem só esses dois ramos. O que descreve como rodar mora na skill: o template da
+logo em `assets/`, e em `references/casos-reais.md` (fora do git, tem nome de cliente) o índice
+dos precedentes por trás das armadilhas.
+
+A pasta do cliente contém **apenas** o `.xlsx` e a subpasta de comprovantes, sem arquivo solto. Depois da etapa 8, sobra nela só o `.itens.json`; sem ele, a pasta do mês sai, e a do cliente
 também, quando fica vazia.
-`input/` preserva os brinks descartados e os arquivos ainda não usados; os caminhos dentro dos
-`.xlsx.itens.json` apontam para lá, então movê-la depois de gerar exige reescrever esses
-caminhos.
+Até a etapa 8, `input/` preserva os brinks descartados e os arquivos ainda não usados, e os
+caminhos dentro dos `.xlsx.itens.json` apontam para lá: não mover a pasta no meio da triagem.
 
 ## Checklist de entrega
 
@@ -411,7 +436,8 @@ como as duas fontes divergem sem ninguém notar. Confira o que depende de julgam
 - [ ] Recalc sem erros e logo presente no arquivo final
 - [ ] Publicação no Drive só depois da aprovação do Daniel e com `--so-publicar`, sem regerar
 - [ ] Cópia conferida na nuvem pelo conector: mesmo nome e mesmo tamanho, nada a mais
-- [ ] `--limpar` só depois da conferência na nuvem
+- [ ] Etapa 7: status movido só para os e-mails confirmados como enviados no Gmail
+- [ ] `--limpar` por último, depois do envio confirmado e do status movido
 
 ## Referências
 

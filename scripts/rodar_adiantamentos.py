@@ -266,6 +266,22 @@ def limpar_publicado(nome, saida, cfg, args):
     return resultado
 
 
+def limpar_input(raw_dir, out_dir):
+    # O bruto do mes so serve ate a triagem; depois a entrega mora no Drive e o
+    # ClickUp guarda o original. Enquanto houver planilha em output/, de qualquer
+    # cliente, alguem ainda pode precisar regerar, entao nada sai.
+    import glob
+    import shutil
+    pendentes = glob.glob(os.path.join(glob.escape(out_dir), '**', '*.xlsx'), recursive=True)
+    if pendentes:
+        return {'input': raw_dir, 'mantido': 'ainda ha planilha em output/: %s'
+                % ', '.join(os.path.relpath(p, out_dir) for p in pendentes)}
+    if not os.path.isdir(raw_dir):
+        return {'input': raw_dir, 'mantido': 'ja nao existia'}
+    shutil.rmtree(raw_dir)
+    return {'input': raw_dir, 'apagado': True}
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument('--mes-clickup', required=True, help='Nome exato da lista no ClickUp, ex: "07 Julho 2026"')
@@ -281,10 +297,11 @@ def main():
                     help='Não busca nem gera: publica no Drive o que já está em output/, depois da '
                          'triagem e da aprovação do Daniel. É o caminho normal da etapa 5')
     ap.add_argument('--limpar', action='store_true',
-                    help='Depois de publicar e conferir na nuvem: apaga de output/ a planilha e os '
+                    help='Última etapa, depois do envio confirmado: apaga de output/ a planilha e os '
                          'comprovantes que estão idênticos no Drive. Mantém o .itens.json, que a '
                          'varredura usa para saber o que já foi cobrado, salvo no cliente com '
-                         'apagar_itens_json_ao_limpar no config')
+                         'apagar_itens_json_ao_limpar no config. Se não sobrar planilha nenhuma em '
+                         'output/, apaga também input/<ano-mm>/')
     ap.add_argument('--drive-root', help='Raiz do Google Drive (default: autodetectar)')
     ap.add_argument('--dry-run', action='store_true', help='Passa --dry-run pro fetch (não baixa arquivos, só lista tarefas)')
     args = ap.parse_args()
@@ -329,6 +346,8 @@ def main():
                 continue
             destino, erro = publicar_no_drive(saida, cfg, args.mes_nome, args.ano, args.drive_root)
             publicados.append({'cliente': nome, 'publicado_em': destino, 'erro': erro})
+        if args.limpar:
+            publicados.append(limpar_input(raw_dir, out_dir))
         print(json.dumps(publicados, ensure_ascii=False, indent=2))
         return
 

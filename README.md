@@ -84,11 +84,16 @@ propósito. Nada disso trava no meio: cliente com erro não impede os demais.
     │     1 documento + 1 comprovante → XX.01, XX.02
     │     qualquer outro caso        → _revisar/XX/
     │
-    └─(7) --publicar-drive (opcional) ────────►  pasta oficial do cliente
+    └─ resumo JSON: totais, pendências, tarefas a mover depois do envio
 
  Depois, o que depende de julgamento humano:
-   ler as pendências · podar os pedidos de pagamento · renumerar_recibos.py ·
-   enviar · mover as tarefas para o status seguinte
+   ler as pendências · podar os pedidos de pagamento · renumerar_recibos.py · aprovar
+
+ E o fechamento, cada passo só depois do anterior:
+   --so-publicar ──────────────────────────►  pasta oficial do cliente no Drive
+   conferir na nuvem, nome e tamanho              pelo conector, não pelo disco
+   enviar · conferir no Gmail · mover approved → solicitado reembolso
+   --limpar, por último ────────────────────►  output/ e input/ esvaziam
 ```
 
 ## Cinco decisões e o porquê de cada uma
@@ -185,8 +190,19 @@ causa e solução, e `evals/` tem os casos de teste. A regra que organiza os tr�
 script e se corrige lá, porque consertar só o arquivo do mês faz o erro voltar no mês
 seguinte.
 
-Depende de Python 3 com openpyxl e de um LibreOffice para o recalc. O token da API vive em
-variável de ambiente, nunca em arquivo versionado.
+O dado mora fora do repositório, numa pasta que o `--out` aponta, com dois ramos: `input/` por
+mês, o download bruto do ClickUp, e `output/` por cliente, a entrega. O corte é esse porque o
+ClickUp entrega por mês e o cliente recebe por cliente, e um cliente que acumula vários meses
+numa planilha só nunca caberia numa pasta de mês. Os dois ramos esvaziam: por último, depois que a cobrança
+saiu, o `--limpar` apaga a planilha e os comprovantes de `output/` e, quando não
+sobra planilha de nenhum cliente, o `input/` do mês. Fica só o `.itens.json` de cada cliente, o
+registro de quais tarefas já foram cobradas. O que descreve como rodar, inclusive a logo de
+referência em `assets/`, mora aqui, não lá.
+
+Depende de Python 3 com openpyxl e de um LibreOffice para o recalc, chamado como `libreoffice`
+ou `soffice`, porque no Homebrew só o segundo entra no PATH. O fetch fala HTTP com `urllib` de
+propósito, para rodar em qualquer `python3` sem instalar nada. O token da API vive em variável
+de ambiente, nunca em arquivo versionado.
 
 Em produção desde julho de 2026, em fechamentos mensais consecutivos. O processo que ela
 substituiu era feito à mão desde 2023.

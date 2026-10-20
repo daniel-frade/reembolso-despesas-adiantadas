@@ -64,6 +64,7 @@ COR_DESCONHECIDA = 'FFBDBDBD'
 
 # B é a coluna do logo. 27.83203125 veio da largura que o Daniel ajustou à mão num
 # relatório de agosto/2026 e foi replicada nos demais clientes do mês.
+LOGO_TEMPLATE = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'assets', 'logo-template.xlsx')
 WIDTHS = {'B': 27.83203125, 'C': 96.0, 'D': 16.0, 'E': 30.51, 'F': 26.5, 'G': 21.83, 'H': 24.0}
 ALTURA_TITULO = 66.0
 ALTURA_CABECALHO = 42.0
@@ -775,8 +776,12 @@ def main():
     referencia = None
     if not args.sem_logo:
         referencia = args.ref or descobrir_referencia(args.pasta_referencia, nome_entrega)
+        # Sem mês anterior no Drive (cliente novo, ano novo), a logo sai do
+        # template da skill, que é só a logo, sem linha de cliente.
+        if not referencia and os.path.isfile(LOGO_TEMPLATE):
+            referencia = LOGO_TEMPLATE
         if not referencia:
-            pendencias.append('Logo não injetada: nenhum --ref e nenhum template encontrado em --pasta-referencia.')
+            pendencias.append('Logo não injetada: nenhum --ref, nada em --pasta-referencia e assets/logo-template.xlsx ausente.')
 
     # Título e nome do arquivo saem do período REAL dos dados, não do --mes:
     # numa cobrança consolidada o --mes é só o mês de entrega, e os dois
