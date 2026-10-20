@@ -185,7 +185,10 @@ contas sem um recibo que estava no ClickUp o tempo todo.
 Os oito scripts ficam em `scripts/`, junto do registro de clientes. O `SKILL.md` é o
 procedimento de operação, `references/formato-planilha.md` é a especificação do formato que o
 `build_relatorio.py` implementa, `references/armadilhas.md` guarda os erros já cometidos com
-causa e solução, e `evals/` tem os casos de teste. A regra que organiza os três documentos:
+causa e solução, `assets/logo-template.xlsx` é uma planilha vazia com só a logo do escritório,
+usada quando o cliente não tem mês anterior de onde copiá-la, e `evals/` tem os casos de teste.
+O índice com os precedentes reais de cada armadilha, com nome de cliente, fica ao lado em
+`references/casos-reais.md` e não é versionado. A regra que organiza os três documentos:
 `build_relatorio.py` é a única implementação do formato, então saída errada é defeito do
 script e se corrige lá, porque consertar só o arquivo do mês faz o erro voltar no mês
 seguinte.
@@ -193,8 +196,8 @@ seguinte.
 O dado mora fora do repositório, numa pasta que o `--out` aponta, com dois ramos: `input/` por
 mês, o download bruto do ClickUp, e `output/` por cliente, a entrega. O corte é esse porque o
 ClickUp entrega por mês e o cliente recebe por cliente, e um cliente que acumula vários meses
-numa planilha só nunca caberia numa pasta de mês. Os dois ramos esvaziam: por último, depois que a cobrança
-saiu, o `--limpar` apaga a planilha e os comprovantes de `output/` e, quando não
+numa planilha só nunca caberia numa pasta de mês. Os dois ramos esvaziam: por último, depois que
+a cobrança saiu, o `--limpar` apaga a planilha e os comprovantes de `output/` e, quando não
 sobra planilha de nenhum cliente, o `input/` do mês. Fica só o `.itens.json` de cada cliente, o
 registro de quais tarefas já foram cobradas. O que descreve como rodar, inclusive a logo de
 referência em `assets/`, mora aqui, não lá.
