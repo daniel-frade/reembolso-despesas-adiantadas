@@ -149,6 +149,12 @@ python3 scripts/conferir_planilha.py ".../{Cliente}-{Mês}-{Ano}.xlsx" \
     --itens 15 --total 977.67 --nome-entrega "{Cliente}"
 ```
 
+- **Mês anterior em aberto.** Para cada cliente mensal, o orquestrador lê pela API as listas dos
+  meses anteriores do ano e avisa o que segue em `solicitado reembolso` (cobrado e não pago:
+  considere consolidar com `--incluir-xlsx`) ou em `approved` (nunca cobrado, ou cobrado e não
+  movido). Em 19/10/2026 um setembro saiu sozinho com agosto cobrado e não pago, e quem lembrou
+  foi o Daniel. O aviso não decide: quem diz se consolida é ele.
+
 ### 1c. Cliente acumulativo: a varredura é automática
 
 Para cliente marcado `acumulativo` ou `pasta_fora_calendario` no `clientes_config.json`, o

@@ -182,6 +182,56 @@ def processar_cliente(nome_cliente, cfg, args, manifest_path, out_dir):
     }
 
 
+def meses_anteriores_em_aberto(mm_atual):
+    """Tarefas das listas de meses anteriores do ano que ainda nao viraram
+    dinheiro de volta, agrupadas por cliente do ClickUp.
+
+    Em 19/10/2026 o setembro de um cliente saiu sozinho quando agosto estava
+    cobrado e nao pago, e quem lembrou foi o Daniel. O sinal estava no status:
+    `solicitado reembolso` e cobrado e nao pago. `approved` num mes passado e
+    cobranca que nunca saiu, ou saiu e a tarefa nao foi movida; o script nao
+    distingue os dois, so avisa. O ClickUp e lido aqui, direto pela API."""
+    from clickup_adiantamentos_fetch import (api_get, extract_custom_fields,
+                                             fetch_all_tasks, task_status)
+    token, pasta = os.environ.get('CLICKUP_TOKEN'), os.environ.get('CLICKUP_FOLDER_ID')
+    if not (token and pasta):
+        return None
+    por_cliente = {}
+    for lst in api_get(token, '/folder/%s/list' % pasta).get('lists', []):
+        mm = lst['name'].split()[0]
+        if not (mm.isdigit() and mm < mm_atual):
+            continue
+        for task in fetch_all_tasks(token, lst['id']):
+            status = task_status(task)
+            if status not in ('solicitado reembolso', 'approved'):
+                continue
+            campos = extract_custom_fields(task)
+            cliente = (campos.get('cliente') or '').strip().lower()
+            por_cliente.setdefault(cliente, []).append(
+                (lst['name'], status, float(campos.get('valor') or 0)))
+    return por_cliente
+
+
+def avisos_em_aberto(cfg, em_aberto):
+    """Uma linha por mes e status, do tipo
+    'Mes anterior em aberto: 08 Agosto 2026, 4 em "solicitado reembolso", R$ 978,32'."""
+    soma = {}
+    for nome in cfg.get('nome_clickup', []):
+        for lista, status, valor in em_aberto.get(nome.strip().lower(), []):
+            qtd, tot = soma.get((lista, status), (0, 0.0))
+            soma[(lista, status)] = (qtd + 1, tot + valor)
+    avisos = []
+    for (lista, status), (qtd, tot) in sorted(soma.items()):
+        valor = ('%.2f' % tot).replace('.', ',')
+        if status == 'solicitado reembolso':
+            avisos.append('Mes anterior cobrado e nao pago: %s, %d tarefa(s), R$ %s. '
+                          'Considere consolidar (--incluir-xlsx)' % (lista, qtd, valor))
+        else:
+            avisos.append('Mes anterior com tarefa em approved: %s, %d tarefa(s), R$ %s. '
+                          'Nunca cobrada, ou cobrada e nao movida' % (lista, qtd, valor))
+    return avisos
+
+
 def limpar_publicado(nome, saida, cfg, args):
     # So apaga o que esta identico no Drive; uma divergencia trava o cliente
     # inteiro, e a copia local continua sendo a unica boa.
@@ -302,6 +352,11 @@ def main():
 
     clientes = [c.strip() for c in args.clientes.split(',')] if args.clientes else list(cfg_todos)
 
+    em_aberto = meses_anteriores_em_aberto(mm)
+    if em_aberto is None:
+        print('Aviso: sem CLICKUP_FOLDER_ID, meses anteriores em aberto nao foram conferidos',
+              file=sys.stderr)
+
     resultados = []
     for nome_cliente in clientes:
         if nome_cliente not in cfg_todos:
@@ -309,7 +364,11 @@ def main():
                                 'etapa': 'config', 'mensagem': 'cliente não está em clientes_config.json'})
             continue
         print('Processando %s...' % nome_cliente, file=sys.stderr)
-        resultados.append(processar_cliente(nome_cliente, cfg_todos[nome_cliente], args, manifest_path, out_dir))
+        res = processar_cliente(nome_cliente, cfg_todos[nome_cliente], args, manifest_path, out_dir)
+        # Acumulativo ja junta os meses e tem a varredura propria.
+        if em_aberto is not None and not cfg_todos[nome_cliente].get('pasta_fora_calendario'):
+            res.setdefault('pendencias', []).extend(avisos_em_aberto(cfg_todos[nome_cliente], em_aberto))
+        resultados.append(res)
 
     todas_pendencias = []
     for res in resultados:
